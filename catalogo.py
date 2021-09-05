@@ -13,9 +13,9 @@ API = IQ_Option(arquivo_user.get('USER', 'user'), arquivo_user.get('USER', 'pass
 API.connect()
 
 if API.check_connect():
-	print(' Conectado com sucesso!')
+	print('¡¡¡¡Login succes!!!!')
 else:
-	print(' Erro ao conectar')
+	print('¡¡¡¡Login Error!!!!')
 	input('\n\n Aperte enter para sair')
 	sys.exit()
 
@@ -79,8 +79,8 @@ P = API.get_all_open_time()
 print('\n\n')
 
 catalogacao = {}
-for par in P['digital']:
-	if P['digital'][par]['open'] == True:
+for par in P['binary']:
+	if P['binary'][par]['open'] == True:
 		timer = int(time())
 		print(Fore.GREEN + '*' + Fore.RESET + ' CATALOGING - ' + par + '.. ', end='')
 		

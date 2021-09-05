@@ -16,14 +16,14 @@ API.change_balance('PRACTICE') # PRACTICE / REAL
 
 while True:
 	if API.check_connect() == False:
-		print('Erro ao se conectar')
+		print('Login errorr')
 		
 		API.connect()
 	else:
-		print('\n\nConectado com sucesso')
+		print('\n\nLogin Succes')
 		break
 	
-	time.sleep(1)
+	# time.sleep(1)
 
 def perfil():
 	perfil = json.loads(json.dumps(API.get_profile_ansyc()))
@@ -51,15 +51,15 @@ def timestamp_converter(x, retorno = 1):
 	hora = datetime.strptime(datetime.utcfromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
 	hora = hora.replace(tzinfo=tz.gettz('GMT'))
 	
-	return str(hora.astimezone(tz.gettz('America/Sao Paulo')))[:-6] if retorno == 1 else hora.astimezone(tz.gettz('America/Sao Paulo'))
+	return str(hora.astimezone(tz.gettz('America/Bogota')))[:-5] if retorno == 1 else hora.astimezone(tz.gettz('America/Bogota'))
 
 def banca():
 	return API.get_balance()
 
 def payout(par, tipo, timeframe = 1):
-	if tipo == 'turbo':
+	if tipo == 'binary':
 		a = API.get_all_profit()
-		return int(100 * a[par]['turbo'])
+		return int(100 * a[par]['binary'])
 		
 	elif tipo == 'digital':
 	
@@ -93,27 +93,38 @@ def martingale(tipo, valor, payout):
 			valor += 0.01
 	 
 def entradas(config, paridade, entrada, direcao, timeframe):
-	status,id = API.buy_digital_spot(paridade, entrada, direcao, timeframe)
+	status,id = API.buy(entrada,paridade,direcao, timeframe)
 
 	if status:
 		# STOP WIN/STOP LOSS
 		banca_att = banca()
+		print(banca())
 		stop_loss = False
 		stop_win = False
 
-		if round((banca_att - float(config['banca_inicial'])), 2) <= (abs(float(config['stop_loss'])) * -1.0):
+		if round(banca(), 2) <= (abs(float(config['stop_loss']))):
+			print(round(banca_att, 2))
+			print((abs(float(config['stop_loss']))))
 			stop_loss = True
 			
-		if round((banca_att - float(config['banca_inicial'])) + (float(entrada) * float(config['payout'])) + float(entrada), 2) >= abs(float(config['stop_win'])):
-			stop_win = True
+		# if round(banca_att, 2) >=(abs(float(config['stop_loss']))) and round(banca_att, 2) >= (abs(float(config['stop_win']))):
+		# 	stop_win = True
+			
+		# if round((banca_att - float(config['banca_inicial'])), 2) <= (abs(float(config['stop_loss'])) * -1.0):
+		# 	stop_loss = True
+			
+		# if round((banca_att - float(config['banca_inicial'])) + (float(entrada) * float(config['payout'])) + float(entrada), 2) >= abs(float(config['stop_win'])):
+		# 	stop_win = True
 		
 		while True:
-			status,lucro = API.check_win_digital_v2(id)
+			status,lucro = API.check_win_v3(id)
 			
 			if status:
-				if lucro > 0:		
+				if lucro > 0:
+					print("Stop win:",stop_win)		
 					return 'win',round(lucro, 2),stop_win
 				else:				
+					print("Stop loss:",stop_loss)		
 					return 'loss',0,stop_loss
 				break	
 	else:
@@ -140,8 +151,12 @@ def carregar_sinais_pro():
 	lista = pd.read_csv(arquivo)
 	return lista
 	
-config['payout'] = float(payout(config['paridade'], 'digital', int(config['timeframe'])) / 100)
-tipo = 'live-deal-digital-option' # live-deal-binary-option-placed
+print("Config")	
+config['payout'] = float(payout(config['paridade'], 'binary', int(config['timeframe'])) / 100)
+# print(float(payout(config['paridade'], 'digital', int(config['timeframe'])) / 100))
+# print(float(payout(config['paridade'], 'binary', int(config['timeframe'])) / 100))
+# tipo = 'live-deal-digital-option' # live-deal-binary-option-placed
+tipo = 'live-deal-binary-option'
 #lista = carregar_sinais()
 lista_sinal = carregar_sinais_pro()	
 
@@ -153,14 +168,29 @@ while True:
 		paridade =  lista_sinal['paridade']
 		direcao = lista_sinal['direcao']
 		timeframe = lista_sinal['timeframe']
+		#print("Hora actual:  ",datetime.now())
 		DATA_HORA = datetime.now()
 		DATA_HORA_FORMATADA = DATA_HORA.strftime("%Y-%m-%d %H:%M:%S")
 
 
 		if (DATA_HORA_FORMATADA == data_hora[i]):
-
-			resultado,stop,lucro = entradas(config, paridade[i], config['valor_entrada'], direcao[i], timeframe[i])
+			print("-----New Option----")
+			print("Hora actual:  ",datetime.now())
+			print("index: ",i)
+			action = direcao[i]
+			print(action)
+			print(paridade[i])
+			currency_pair = paridade[i]
+			time_frame = timeframe[i]
+			print("currency_pair: ",currency_pair)
+			resultado,lucro,stop = entradas(config, currency_pair, config['valor_entrada'],action, time_frame)
 			print('   -> ',resultado,'/',lucro,'\n\n')
+
+			print("Resultado:",resultado)
+			print("Lucro:",lucro)
+			print("Stop: ",stop)
+			if resultado == 'win':
+				print("-----End Option----")
 
 			if stop:
 				print('\n\nStop',resultado.upper(),'batido!')
@@ -173,14 +203,18 @@ while True:
 
 				for i in range(int(config['niveis']) if int(config['niveis']) > 0 else 1):
 					
-					print('   MARTINGALE NIVEL '+str(i+1)+'..', end='')
-					resultado,lucro,stop = entradas(config, paridade[i], valor_entrada, direcao[i], timeframe[i])
+					print('   MARTINGALE NIVEL '+str(i+1)+'.', end='')
+					print("Hora actual:  ",datetime.now())
+					print("currency_pair: ",currency_pair)
+					resultado,lucro,stop = entradas(config, currency_pair, valor_entrada,action, time_frame)
 					print(' ',resultado,'/',lucro,'\n')
 					if stop:
 						print('\n\nStop',resultado.upper(),'batido!')
+						print("-----End Option----")
 						sys.exit()
 					
 					if resultado == 'win':
+						print("-----End Option----")
 						print('\n')
 						break
 					else:
